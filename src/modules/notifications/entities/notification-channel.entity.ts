@@ -42,3 +42,5 @@ export class NotificationChannel {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
+// per-workspace quiet hours: { start: '22:00', end: '08:00', timezone: 'UTC' }
