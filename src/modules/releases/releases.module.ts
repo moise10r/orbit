@@ -13,3 +13,4 @@ import { Environment } from './entities/environment.entity';
   exports: [ReleasesService, TypeOrmModule],
 })
 export class ReleasesModule {}
+
