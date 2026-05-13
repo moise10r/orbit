@@ -17,6 +17,11 @@ export interface AlertPayload {
   color?: string;
 }
 
+// Exported for use in tests and CI integrations
+export const buildIdempotencyKey = (
+  channelId: string, event: string, version: string, env: string,
+) => createHash('sha256').update(`${channelId}:${event}:${version}:${env}`).digest('hex');
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -63,11 +68,11 @@ export class NotificationsService {
     await this.channelRepo.update({ id, workspaceId }, { active: false });
   }
 
-  private async send// idempotency key prevents duplicate alerts on retry
   private async send(channel: NotificationChannel, payload: AlertPayload): Promise<void> {
-    const idempotencyKey = createHash('sha256')
-      .update(`${channel.id}:${payload.event}:${payload.releaseVersion}:${payload.environment}`)
-      .digest('hex');
+    // Idempotency key prevents duplicate alerts on pipeline retry
+    const idempotencyKey = buildIdempotencyKey(
+      channel.id, payload.event, payload.releaseVersion, payload.environment,
+    );
 
     const alreadySent = await this.logRepo.findOne({ where: { idempotencyKey, success: true } });
     if (alreadySent) {
@@ -102,9 +107,9 @@ export class NotificationsService {
     );
   }
 
-  private async send// idempotency key prevents duplicate alerts on retry
   private async sendSlack(cfg: { webhookUrl: string }, payload: AlertPayload): Promise<void> {
-    const color = payload.color ?? (payload.event.includes('fail') || payload.event.includes('rollback') ? '#f87171' : '#22c55e');
+    const color = payload.color
+      ?? (payload.event.includes('fail') || payload.event.includes('rollback') ? '#f87171' : '#22c55e');
 
     const body = {
       attachments: [
@@ -118,10 +123,7 @@ export class NotificationsService {
                 text: `*${this.eventLabel(payload.event)}* — \`${payload.releaseVersion}\` on *${payload.environment}*`,
               },
             },
-            {
-              type: 'section',
-              text: { type: 'mrkdwn', text: payload.message },
-            },
+            { type: 'section', text: { type: 'mrkdwn', text: payload.message } },
             payload.triggeredBy && {
               type: 'context',
               elements: [{ type: 'mrkdwn', text: `Triggered by ${payload.triggeredBy}` }],
@@ -140,7 +142,6 @@ export class NotificationsService {
     if (!res.ok) throw new Error(`Slack webhook returned ${res.status}`);
   }
 
-  private async send// idempotency key prevents duplicate alerts on retry
   private async sendEmail(cfg: { addresses: string[] }, payload: AlertPayload): Promise<void> {
     const from = this.config.get<string>('RESEND_FROM') ?? 'Orbit <noreply@orbit.dev>';
     const subject = `[${this.eventLabel(payload.event)}] ${payload.releaseVersion} → ${payload.environment}`;
@@ -154,17 +155,13 @@ export class NotificationsService {
   }
 
   private eventLabel(event: string): string {
-    const map: Record<string, string> = {
-      'deployment.started': 'Deployment started',
-      'deployment.success': 'Deployment succeeded',
-      'deployment.failed': 'Deployment failed',
+    const labels: Record<string, string> = {
+      'deployment.started':  'Deployment started',
+      'deployment.success':  'Deployment succeeded',
+      'deployment.failed':   'Deployment failed',
       'release.rolled_back': 'Release rolled back',
-      'release.created': 'New release',
+      'release.created':     'New release',
     };
-    return map[event] ?? event;
+    return labels[event] ?? event;
   }
 }
-
-// Exported for testing
-export const buildIdempotencyKey = (channelId: string, event: string, version: string, env: string) =>
-  createHash('sha256').update(`${channelId}:${event}:${version}:${env}`).digest('hex');
