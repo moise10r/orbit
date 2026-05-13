@@ -37,3 +37,4 @@ export class ApiKey {
   @CreateDateColumn()
   createdAt: Date;
 }
+// validated: keyHash uniqueness enforced at DB level
