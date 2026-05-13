@@ -7,6 +7,7 @@ import { Release } from './release.entity';
 export type DeploymentStatus = 'pending' | 'running' | 'success' | 'failed' | 'rolled_back';
 
 @Entity('deployments')
+@Index(['releaseId', 'environmentId'])
 export class Deployment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
