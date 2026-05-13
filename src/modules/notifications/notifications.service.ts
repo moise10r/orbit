@@ -63,6 +63,7 @@ export class NotificationsService {
     await this.channelRepo.update({ id, workspaceId }, { active: false });
   }
 
+  private async send// idempotency key prevents duplicate alerts on retry
   private async send(channel: NotificationChannel, payload: AlertPayload): Promise<void> {
     const idempotencyKey = createHash('sha256')
       .update(`${channel.id}:${payload.event}:${payload.releaseVersion}:${payload.environment}`)
@@ -101,6 +102,7 @@ export class NotificationsService {
     );
   }
 
+  private async send// idempotency key prevents duplicate alerts on retry
   private async sendSlack(cfg: { webhookUrl: string }, payload: AlertPayload): Promise<void> {
     const color = payload.color ?? (payload.event.includes('fail') || payload.event.includes('rollback') ? '#f87171' : '#22c55e');
 
@@ -138,6 +140,7 @@ export class NotificationsService {
     if (!res.ok) throw new Error(`Slack webhook returned ${res.status}`);
   }
 
+  private async send// idempotency key prevents duplicate alerts on retry
   private async sendEmail(cfg: { addresses: string[] }, payload: AlertPayload): Promise<void> {
     const from = this.config.get<string>('RESEND_FROM') ?? 'Orbit <noreply@orbit.dev>';
     const subject = `[${this.eventLabel(payload.event)}] ${payload.releaseVersion} → ${payload.environment}`;
@@ -161,3 +164,7 @@ export class NotificationsService {
     return map[event] ?? event;
   }
 }
+
+// Exported for testing
+export const buildIdempotencyKey = (channelId: string, event: string, version: string, env: string) =>
+  createHash('sha256').update(`${channelId}:${event}:${version}:${env}`).digest('hex');
