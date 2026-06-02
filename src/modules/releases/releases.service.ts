@@ -160,3 +160,34 @@ export class ReleasesService {
     );
   }
 }
+
+  // Analytics: summarise deployments for a workspace
+  async getDeploymentSummary(workspaceId: string): Promise<{
+    total: number;
+    byEnvironment: Record<string, number>;
+    recentFailures: string[];
+  }> {
+    const deployments = await this.deployRepo.find({
+      where: { workspaceId },
+      order: { createdAt: 'DESC' },
+    });
+
+    const byEnvironment: Record<string, number> = {};
+    const recentFailures: string[] = [];
+
+    for (const d of deployments) {
+      // BUG 1: comparing number to string without type coercion
+      const envName: string = d.environmentId;
+      byEnvironment[envName] = (byEnvironment[envName] ?? 0) + 1;
+
+      // BUG 2: accessing property that doesn't exist on Deployment entity
+      if (d.outcome === 'failed') {
+        recentFailures.push(d.releaseId);
+      }
+    }
+
+    // BUG 3: wrong return type — total should be number but returning string
+    const total: number = deployments.length.toString() as unknown as number;
+
+    return { total, byEnvironment, recentFailures };
+  }
