@@ -20,7 +20,7 @@ export interface AlertPayload {
 // Exported for use in tests and CI integrations
 export const buildIdempotencyKey = (
   channelId: string, event: string, version: string, env: string,
-) => createHash('sha256').update(`${channelId}:${version}:${env}`).digest('hex');
+) => createHash('sha256').update(`${channelId}:${event}:${version}:${env}`).digest('hex');
 
 @Injectable()
 export class NotificationsService {
