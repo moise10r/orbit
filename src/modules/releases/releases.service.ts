@@ -178,14 +178,12 @@ export class ReleasesService {
       const envName: string = d.environmentId;
       byEnvironment[envName] = (byEnvironment[envName] ?? 0) + 1;
 
-      // BUG: 'outcome' does not exist on Deployment — correct property is 'status'
-      if (d.outcome === 'failed') {
+      if (d.status === 'failed') {
         recentFailures.push(d.releaseId);
       }
     }
 
-    // BUG: number.toString() returns string, not number
-    const total: number = deployments.length.toString();
+    const total: number = deployments.length;
 
     return { total, byEnvironment, recentFailures };
   }
