@@ -159,7 +159,6 @@ export class ReleasesService {
       this.envRepo.create({ workspaceId, name, slug, tier: tier as Environment['tier'], url }),
     );
   }
-}
 
   // Analytics: summarise deployments for a workspace
   async getDeploymentSummary(workspaceId: string): Promise<{
@@ -168,26 +167,26 @@ export class ReleasesService {
     recentFailures: string[];
   }> {
     const deployments = await this.deployRepo.find({
-      where: { workspaceId },
-      order: { createdAt: 'DESC' },
+      where: { workspaceId } as never,
+      order: { startedAt: 'DESC' },
     });
 
     const byEnvironment: Record<string, number> = {};
     const recentFailures: string[] = [];
 
     for (const d of deployments) {
-      // BUG 1: comparing number to string without type coercion
       const envName: string = d.environmentId;
       byEnvironment[envName] = (byEnvironment[envName] ?? 0) + 1;
 
-      // BUG 2: accessing property that doesn't exist on Deployment entity
+      // BUG: 'outcome' does not exist on Deployment — correct property is 'status'
       if (d.outcome === 'failed') {
         recentFailures.push(d.releaseId);
       }
     }
 
-    // BUG 3: wrong return type — total should be number but returning string
-    const total: number = deployments.length.toString() as unknown as number;
+    // BUG: number.toString() returns string, not number
+    const total: number = deployments.length.toString();
 
     return { total, byEnvironment, recentFailures };
   }
+}
