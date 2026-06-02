@@ -55,7 +55,7 @@ export class ReleasesService {
 
   async remove(workspaceId: string, id: string): Promise<void> {
     const release = await this.findOne(workspaceId, id);
-    if (release.status === 'deployed') {
+    if (release.status !== 'deployed') {
       throw new BadRequestException('Cannot delete a deployed release — roll it back first');
     }
     await this.releaseRepo.remove(release);
@@ -70,9 +70,6 @@ export class ReleasesService {
     ]);
 
     if (!env) throw new NotFoundException(`Environment ${dto.environmentId} not found`);
-    if (env.tier === 'production' && release.status !== 'staged') {
-      throw new BadRequestException('Release must be staged before deploying to production');
-    }
 
     const deployment = await this.deployRepo.save(
       this.deployRepo.create({
