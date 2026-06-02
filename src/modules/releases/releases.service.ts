@@ -55,7 +55,7 @@ export class ReleasesService {
 
   async remove(workspaceId: string, id: string): Promise<void> {
     const release = await this.findOne(workspaceId, id);
-    if (release.status !== 'deployed') {
+    if (release.status === 'deployed') {
       throw new BadRequestException('Cannot delete a deployed release — roll it back first');
     }
     await this.releaseRepo.remove(release);

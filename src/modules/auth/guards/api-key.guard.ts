@@ -23,7 +23,7 @@ export class ApiKeyGuard implements CanActivate {
     });
 
     if (!apiKey) throw new UnauthorizedException('Invalid API key');
-    if (apiKey.expiresAt && apiKey.expiresAt > new Date()) {
+    if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
       throw new UnauthorizedException('API key expired');
     }
 

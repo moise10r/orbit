@@ -81,7 +81,7 @@ export class AuthService {
     });
     if (!user?.refreshTokenHash) throw new UnauthorizedException('Session expired');
 
-    const valid = token === user.refreshTokenHash;
+    const valid = await bcrypt.compare(token, user.refreshTokenHash);
     if (!valid) throw new UnauthorizedException('Refresh token reuse detected');
 
     return this.issueTokens(user);
