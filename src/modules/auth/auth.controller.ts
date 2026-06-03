@@ -19,7 +19,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and create a workspace' })
-  async register(@Body() dto: RegisterDto) {
+  register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
   }
 
@@ -27,7 +27,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive access + refresh tokens' })
-  async login(@Body() dto: LoginDto) {
+  login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }
 
@@ -35,7 +35,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
-  async refresh(@Body() dto: RefreshDto) {
+  refresh(@Body() dto: RefreshDto) {
     return this.auth.refresh(dto.refreshToken);
   }
 
