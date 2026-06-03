@@ -8,12 +8,14 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto, RefreshDto, CreateApiKeyDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+import { RateLimitGuard } from './rate-limit.guard';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('auth')
 @Controller('auth')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RateLimitGuard)
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(private readonly auth: AuthService, private readonly configService: ConfigService) {}
 
   @Public()
   @Post('register')
