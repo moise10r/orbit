@@ -1,8 +1,8 @@
-import { Injectable, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, ExecutionContext, ForbiddenException, CanActivate } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class RateLimitGuard {
+export class RateLimitGuard implements CanActivate {
   private readonly rateLimit: number;
   private readonly timeWindow: number; // in milliseconds
   private requests: Map<string, { count: number; startTime: number }> = new Map();
