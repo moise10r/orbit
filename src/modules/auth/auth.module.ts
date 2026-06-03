@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ApiKeyGuard } from './guards/api-key.guard';
+import { RateLimitGuard } from './rate-limit.guard';
 import { User } from './entities/user.entity';
 import { Workspace } from './entities/workspace.entity';
 import { ApiKey } from './entities/api-key.entity';
@@ -25,8 +26,8 @@ import { ApiKey } from './entities/api-key.entity';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard, RateLimitGuard],
   controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
+  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, RateLimitGuard, TypeOrmModule],
 })
 export class AuthModule {}
