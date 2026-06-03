@@ -1,32 +1,47 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { ApiKeyGuard } from './guards/api-key.guard';
-import { User } from './entities/user.entity';
-import { Workspace } from './entities/workspace.entity';
-import { ApiKey } from './entities/api-key.entity';
+import { Injectable, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-@Module({
-  imports: [
-    TypeOrmModule.forFeature([User, Workspace, ApiKey]),
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '15m' },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
-  controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
-})
-export class AuthModule {}
+@Injectable()
+export class RateLimiter {
+  private readonly rateLimit: number;
+  private readonly timeWindow: number; // in milliseconds
+  private requests: Map<string, { count: number; startTime: number }> = new Map();
+
+  constructor(private readonly configService: ConfigService) {
+    this.rateLimit = this.configService.get<number>('RATE_LIMIT', 100); // Default to 100 requests
+    this.timeWindow = this.configService.get<number>('TIME_WINDOW', 60000); // Default to 60 seconds
+  }
+
+  private isRateLimitExceeded(ipRequests: { count: number; startTime: number }, currentTime: number): boolean {
+    return ipRequests.count >= this.rateLimit && (currentTime - ipRequests.startTime) <= this.timeWindow;
+  }
+
+  private resetRequests(ip: string, currentTime: number): void {
+    this.requests.set(ip, { count: 1, startTime: currentTime });
+  }
+
+  private incrementRequests(ipRequests: { count: number; startTime: number }): void {
+    ipRequests.count++;
+  }
+
+  canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest();
+    const ip = request.ip || request.connection.remoteAddress;
+
+    const currentTime = Date.now();
+    const ipRequests = this.requests.get(ip) || { count: 0, startTime: currentTime };
+
+    if (currentTime - ipRequests.startTime > this.timeWindow) {
+      this.resetRequests(ip, currentTime);
+      return true;
+    }
+
+    if (!this.isRateLimitExceeded(ipRequests, currentTime)) {
+      this.incrementRequests(ipRequests);
+      this.requests.set(ip, ipRequests);
+      return true;
+    }
+
+    throw new ForbiddenException('Rate limit exceeded. Try again later.');
+  }
+}
