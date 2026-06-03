@@ -11,6 +11,8 @@ import { ApiKeyGuard } from './guards/api-key.guard';
 import { User } from './entities/user.entity';
 import { Workspace } from './entities/workspace.entity';
 import { ApiKey } from './entities/api-key.entity';
+import { RateLimitGuard } from './rate-limit.guard';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -25,7 +27,16 @@ import { ApiKey } from './entities/api-key.entity';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    JwtAuthGuard, 
+    ApiKeyGuard,
+    {
+      provide: APP_GUARD,
+      useClass: RateLimitGuard,
+    }
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
 })
