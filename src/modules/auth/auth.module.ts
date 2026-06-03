@@ -11,6 +11,8 @@ import { ApiKeyGuard } from './guards/api-key.guard';
 import { User } from './entities/user.entity';
 import { Workspace } from './entities/workspace.entity';
 import { ApiKey } from './entities/api-key.entity';
+import { FeatureToggleService } from '../feature-toggle/feature-toggle.service';
+import { RateLimitGuard } from './rate-limit.guard';
 
 @Module({
   imports: [
@@ -25,7 +27,20 @@ import { ApiKey } from './entities/api-key.entity';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    ApiKeyGuard,
+    {
+      provide: RateLimitGuard,
+      useFactory: async (featureToggleService: FeatureToggleService) => {
+        const isRateLimitingEnabled = await featureToggleService.isFeatureEnabled('RATE_LIMITING');
+        return isRateLimitingEnabled ? new RateLimitGuard() : null;
+      },
+      inject: [FeatureToggleService],
+    },
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
 })
