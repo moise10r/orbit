@@ -17,7 +17,7 @@ export class RateLimitGuard implements CanActivate {
       windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
       max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
       handler: (req: Request, res, next) => {
-        throw new ForbiddenException('Too many requests, please try again later.');
+        next(new ForbiddenException('Too many requests, please try again later.'));
       },
     };
     this.limiter = rateLimit(rateLimitConfig);
@@ -25,14 +25,14 @@ export class RateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.limiter(request, null, (err) => {
         if (err) {
-          reject(new ForbiddenException('Too many requests, please try again later.'));
+          throw new ForbiddenException('Too many requests, please try again later.');
         } else {
           resolve(true);
         }
       });
-    }).catch(() => false);
+    }).then(() => true).catch(() => false);
   }
 }
