@@ -1,32 +1,40 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+// src/modules/auth/auth.controller.ts
+import {
+  Controller, Post, Body, UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { JwtStrategy } from './strategies/jwt.strategy';
+import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { ApiKeyGuard } from './guards/api-key.guard';
-import { User } from './entities/user.entity';
-import { Workspace } from './entities/workspace.entity';
-import { ApiKey } from './entities/api-key.entity';
+import { Public } from './decorators/public.decorator';
+import { RateLimitGuard } from './rate-limit.guard';
 
-@Module({
-  imports: [
-    TypeOrmModule.forFeature([User, Workspace, ApiKey]),
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '15m' },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
-  controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
-})
-export class AuthModule {}
+@ApiTags('auth')
+@Controller('auth')
+@UseGuards(JwtAuthGuard, RateLimitGuard)
+export class AuthController {
+  constructor(private readonly auth: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new user and create a workspace' })
+  async register(@Body() registerDto: RegisterDto) {
+    return this.auth.register(registerDto);
+  }
+
+  @Public()
+  @Post('login')
+  @ApiOperation({ summary: 'Log in an existing user' })
+  async login(@Body() loginDto: LoginDto) {
+    return this.auth.login(loginDto);
+  }
+
+  @Public()
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refresh login session' })
+  async refresh(@Body() refreshDto: RefreshDto) {
+    return this.auth.refresh(refreshDto);
+  }
+
+  // other methods...
+}
