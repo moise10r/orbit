@@ -1,8 +1,8 @@
 import {
   Controller, Post, Body, Get, Delete, Param,
-  UseGuards, Request, HttpCode, HttpStatus, Headers, BadRequestException,
+  UseGuards, Request, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto, RefreshDto, CreateApiKeyDto } from './dto/login.dto';
@@ -20,14 +20,7 @@ export class AuthController {
   @UseGuards(RateLimitGuard)
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and create a workspace' })
-  @ApiHeader({ name: 'X-Idempotency-Key', description: 'Unique key to ensure idempotent registration', required: true })
-  register(
-    @Headers('x-idempotency-key') idempotencyKey: string,
-    @Body() dto: RegisterDto,
-  ) {
-    if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
-    }
+  register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
   }
 
@@ -36,14 +29,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive access + refresh tokens' })
-  @ApiHeader({ name: 'X-Idempotency-Key', description: 'Unique key to ensure idempotent login', required: true })
-  login(
-    @Headers('x-idempotency-key') idempotencyKey: string,
-    @Body() dto: LoginDto,
-  ) {
-    if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
-    }
+  login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
   }
 
@@ -51,14 +37,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
-  @ApiHeader({ name: 'X-Idempotency-Key', description: 'Unique key to ensure idempotent token refresh', required: true })
-  refresh(
-    @Headers('x-idempotency-key') idempotencyKey: string,
-    @Body() dto: RefreshDto,
-  ) {
-    if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
-    }
+  refresh(@Body() dto: RefreshDto) {
     return this.auth.refresh(dto.refreshToken);
   }
 
@@ -79,15 +58,10 @@ export class AuthController {
   @Post('api-keys')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new API key — key is only shown once' })
-  @ApiHeader({ name: 'X-Idempotency-Key', description: 'Unique key to ensure idempotent API key creation', required: true })
   createKey(
-    @Headers('x-idempotency-key') idempotencyKey: string,
     @Request() req: { user: { workspaceId: string } },
     @Body() dto: CreateApiKeyDto,
   ) {
-    if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
-    }
     return this.auth.createApiKey(req.user.workspaceId, dto.name);
   }
 
