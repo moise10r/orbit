@@ -20,13 +20,13 @@ import { ApiKey } from './entities/api-key.entity';
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '15m' },
+        signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN', '15m') },
       }),
       inject: [ConfigService],
     }),
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
   controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
+  exports: [AuthService, JwtAuthGuard, ApiKeyGuard],
 })
 export class AuthModule {}
