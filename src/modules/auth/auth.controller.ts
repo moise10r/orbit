@@ -8,6 +8,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto, RefreshDto, CreateApiKeyDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -16,6 +17,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and create a workspace' })
   register(@Body() dto: RegisterDto) {
@@ -23,6 +25,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive access + refresh tokens' })
