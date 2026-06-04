@@ -1,13 +1,33 @@
 import {
   Controller, Post, Body, Get, Delete, Param,
-  UseGuards, Request, HttpCode, HttpStatus,
+  UseGuards, Request, HttpCode, HttpStatus, Headers,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto, RefreshDto, CreateApiKeyDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 import { Public } from './decorators/public.decorator';
+import { validateRegister, validateLogin, validateRefresh, validateCreateApiKey } from './validation/auth.schemas';
+
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  name: string;
+  workspaceId: string;
+}
+
+export interface AuthenticatedRequest {
+  user: AuthenticatedUser;
+}
+
+function requireIdempotencyKey(idempotencyKey: string | undefined): void {
+  if (!idempotencyKey || idempotencyKey.trim() === '') {
+    throw new UnprocessableEntityException(
+      'X-Idempotency-Key header is required for this endpoint',
+    );
+  }
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -16,39 +36,57 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and create a workspace' })
-  register(@Body() dto: RegisterDto) {
+  register(
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Body() body: unknown,
+  ) {
+    requireIdempotencyKey(idempotencyKey);
+    const dto = validateRegister(body);
     return this.auth.register(dto);
   }
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive access + refresh tokens' })
-  login(@Body() dto: LoginDto) {
+  login(
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Body() body: unknown,
+  ) {
+    requireIdempotencyKey(idempotencyKey);
+    const dto = validateLogin(body);
     return this.auth.login(dto);
   }
 
   @Public()
+  @UseGuards(RateLimitGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
-  refresh(@Body() dto: RefreshDto) {
+  refresh(
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Body() body: unknown,
+  ) {
+    requireIdempotencyKey(idempotencyKey);
+    const dto = validateRefresh(body);
     return this.auth.refresh(dto.refreshToken);
   }
 
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Return the currently authenticated user' })
-  me(@Request() req: { user: { id: string; email: string; name: string } }) {
+  me(@Request() req: AuthenticatedRequest) {
     return req.user;
   }
 
   @Get('api-keys')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List API keys for the current workspace' })
-  listKeys(@Request() req: { user: { workspaceId: string } }) {
+  listKeys(@Request() req: AuthenticatedRequest) {
     return this.auth.listApiKeys(req.user.workspaceId);
   }
 
@@ -56,9 +94,12 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new API key — key is only shown once' })
   createKey(
-    @Request() req: { user: { workspaceId: string } },
-    @Body() dto: CreateApiKeyDto,
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Request() req: AuthenticatedRequest,
+    @Body() body: unknown,
   ) {
+    requireIdempotencyKey(idempotencyKey);
+    const dto = validateCreateApiKey(body);
     return this.auth.createApiKey(req.user.workspaceId, dto.name);
   }
 
@@ -67,9 +108,11 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Revoke an API key' })
   revokeKey(
+    @Headers('x-idempotency-key') idempotencyKey: string,
     @Param('id') id: string,
-    @Request() req: { user: { workspaceId: string } },
+    @Request() req: AuthenticatedRequest,
   ) {
+    requireIdempotencyKey(idempotencyKey);
     return this.auth.revokeApiKey(id, req.user.workspaceId);
   }
 }
