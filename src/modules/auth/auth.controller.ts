@@ -1,6 +1,7 @@
 import {
   Controller, Post, Body, Get, Delete, Param,
-  UseGuards, Request, HttpCode, HttpStatus,
+  UseGuards, Request, HttpCode, HttpStatus, Headers,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -8,6 +9,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto, RefreshDto, CreateApiKeyDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -17,24 +19,45 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @UseGuards(RateLimitGuard)
   @ApiOperation({ summary: 'Register a new user and create a workspace' })
-  register(@Body() dto: RegisterDto) {
+  register(
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Body() dto: RegisterDto,
+  ) {
+    if (!idempotencyKey) {
+      throw new BadRequestException('X-Idempotency-Key header is required');
+    }
     return this.auth.register(dto);
   }
 
   @Public()
   @Post('login')
+  @UseGuards(RateLimitGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive access + refresh tokens' })
-  login(@Body() dto: LoginDto) {
+  login(
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Body() dto: LoginDto,
+  ) {
+    if (!idempotencyKey) {
+      throw new BadRequestException('X-Idempotency-Key header is required');
+    }
     return this.auth.login(dto);
   }
 
   @Public()
   @Post('refresh')
+  @UseGuards(RateLimitGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
-  refresh(@Body() dto: RefreshDto) {
+  refresh(
+    @Headers('x-idempotency-key') idempotencyKey: string,
+    @Body() dto: RefreshDto,
+  ) {
+    if (!idempotencyKey) {
+      throw new BadRequestException('X-Idempotency-Key header is required');
+    }
     return this.auth.refresh(dto.refreshToken);
   }
 
