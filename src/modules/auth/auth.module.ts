@@ -14,19 +14,26 @@ import { ApiKey } from './entities/api-key.entity';
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([User, Workspace, ApiKey]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '15m' },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is not set');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '15m' },
+        };
+      },
       inject: [ConfigService],
     }),
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
   controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
+  exports: [AuthService, JwtAuthGuard, ApiKeyGuard],
 })
 export class AuthModule {}
