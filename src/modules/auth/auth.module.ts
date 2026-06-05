@@ -1,3 +1,4 @@
+import { RateLimitGuard } from './guards/rate-limit.guard';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -25,8 +26,10 @@ import { ApiKey } from './entities/api-key.entity';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard, RateLimitGuard],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
 })
-export class AuthModule {}
+export class AuthModule {
+  constructor(private readonly rateLimitGuard: RateLimitGuard) {}
+}
