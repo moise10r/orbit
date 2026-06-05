@@ -8,25 +8,23 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ApiKeyGuard } from './guards/api-key.guard';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 import { User } from './entities/user.entity';
-import { Workspace } from './entities/workspace.entity';
-import { ApiKey } from './entities/api-key.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Workspace, ApiKey]),
+    TypeOrmModule.forFeature([User]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
+      useFactory: async (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '15m' },
+        signOptions: { expiresIn: '60s' },
       }),
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
   controllers: [AuthController],
-  exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard, RateLimitGuard],
 })
 export class AuthModule {}
