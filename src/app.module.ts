@@ -2,8 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
-import { ReleasesModule } from './modules/releases/releases.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReleasesModule } from './modules/releases/releases.module';
+import { RateLimitGuard } from './modules/auth/guards/rate-limit.guard';
 
 @Module({
   imports: [
@@ -12,16 +13,16 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        url: config.get<string>('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') !== 'production',
-        logging: config.get('NODE_ENV') === 'development',
+        // additional DB config here
       }),
       inject: [ConfigService],
     }),
     AuthModule,
     ReleasesModule,
     NotificationsModule,
+  ],
+  providers: [
+    { provide: 'APP_GUARD', useClass: RateLimitGuard }
   ],
 })
 export class AppModule {}
