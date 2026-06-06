@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
+import { RateLimitGuard } from './guards/rate-limit.guard';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -25,7 +26,7 @@ import { ApiKey } from './entities/api-key.entity';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard, RateLimitGuard],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
 })
