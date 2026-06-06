@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { ReleasesModule } from './modules/releases/releases.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       inject: [ConfigService],
     }),
     AuthModule,
+    UserModule,
     ReleasesModule,
     NotificationsModule,
   ],
