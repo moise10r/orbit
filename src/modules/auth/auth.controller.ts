@@ -3,11 +3,19 @@ import {
   UseGuards, Request, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto, RefreshDto, CreateApiKeyDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+
+// Per-IP limits for the unauthenticated auth endpoints — tighter than the module-wide
+// default since these are the routes most exposed to credential-stuffing and signup abuse.
+const REGISTER_RATE_LIMIT_PER_WINDOW = 5;
+const REGISTER_RATE_WINDOW_MS        = 60_000;
+const LOGIN_RATE_LIMIT_PER_WINDOW    = 10;
+const LOGIN_RATE_WINDOW_MS           = 60_000;
 
 @ApiTags('auth')
 @Controller('auth')
@@ -16,6 +24,8 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: REGISTER_RATE_LIMIT_PER_WINDOW, ttl: REGISTER_RATE_WINDOW_MS } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and create a workspace' })
   register(@Body() dto: RegisterDto) {
@@ -23,6 +33,8 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: LOGIN_RATE_LIMIT_PER_WINDOW, ttl: LOGIN_RATE_WINDOW_MS } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive access + refresh tokens' })
