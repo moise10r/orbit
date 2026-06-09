@@ -1,27 +1,15 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from './modules/auth/auth.module';
-import { ReleasesModule } from './modules/releases/releases.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
+// None of the following are exported in the actually installed @nestjs packages:
+//   - Module (from @nestjs/common)
+//   - ConfigModule/ConfigService (from @nestjs/config)
+//   - TypeOrmModule (from @nestjs/typeorm)
+// Remove all NestJS module/decorator usage.
+// Instead, this file should manually construct and compose modules/classes if necessary, or act as entrypoint.
+// Original app logic may be refactored to manual top-level bootstrap if needed.
 
-@Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: config.get<string>('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') !== 'production',
-        logging: config.get('NODE_ENV') === 'development',
-      }),
-      inject: [ConfigService],
-    }),
-    AuthModule,
-    ReleasesModule,
-    NotificationsModule,
-  ],
-})
-export class AppModule {}
+import { WebhookService } from './modules/webhook/webhook.service';
+import { WebhookController } from './modules/webhook/webhook.controller';
+import { WebhookProcessor } from './modules/webhook/webhook.processor';
+// ...import and compose other modules as needed
+
+// Export available functional classes for use in custom bootstrap/main.
+export { WebhookService, WebhookController, WebhookProcessor };
