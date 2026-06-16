@@ -5,18 +5,34 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Release } from './entities/release.entity';
 import { Deployment } from './entities/deployment.entity';
-import { Environment } from './entities/environment.entity';
+import { Environment, EnvironmentTier } from './entities/environment.entity';
 import {
   CreateReleaseDto, UpdateReleaseDto,
   CreateDeploymentDto, UpdateDeploymentDto,
 } from './dto/release.dto';
 
+export interface EnvironmentHealth {
+  environmentId:    string;
+  environmentName:  string;
+  tier:             EnvironmentTier;
+  status:           'healthy' | 'degraded' | 'unhealthy';
+  currentVersion:   string | null;
+  totalDeployments: number;
+  successCount:     number;
+  failedCount:      number;
+  failureRate:      number;
+  lastDeployedAt:   Date | null;
+  lastSuccessAt:    Date | null;
+}
+
+const HEALTH_WINDOW_DAYS = 30;
+
 @Injectable()
 export class ReleasesService {
   constructor(
-    @InjectRepository(Release)   private readonly releaseRepo: Repository<Release>,
-    @InjectRepository(Deployment) private readonly deployRepo: Repository<Deployment>,
-    @InjectRepository(Environment) private readonly envRepo: Repository<Environment>,
+    @InjectRepository(Release)      private readonly releaseRepo: Repository<Release>,
+    @InjectRepository(Deployment)   private readonly deployRepo:  Repository<Deployment>,
+    @InjectRepository(Environment)  private readonly envRepo:     Repository<Environment>,
   ) {}
 
   // ── Releases ────────────────────────────────────────────────────────────────
@@ -85,7 +101,6 @@ export class ReleasesService {
       }),
     );
 
-    // Update release status based on environment tier
     const newStatus = env.tier === 'production' ? 'deployed' : 'staged';
     await this.releaseRepo.update(releaseId, { status: newStatus });
 
@@ -157,5 +172,50 @@ export class ReleasesService {
     return this.envRepo.save(
       this.envRepo.create({ workspaceId, name, slug, tier: tier as Environment['tier'], url }),
     );
+  }
+
+  async getEnvironmentHealth(workspaceId: string, envId: string): Promise<EnvironmentHealth> {
+    const env = await this.envRepo.findOne({ where: { id: envId, workspaceId } });
+    if (!env) throw new NotFoundException(`Environment ${envId} not found`);
+
+    const cutoff = new Date(Date.now() - HEALTH_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const allDeployments = await this.deployRepo.find({
+      where: { environmentId: envId },
+      order: { startedAt: 'DESC' },
+    });
+
+    const recent       = allDeployments.filter((d) => d.startedAt >= cutoff);
+    const successCount = recent.filter((d) => d.status === 'success').length;
+    const failedCount  = recent.filter((d) => d.status === 'failed').length;
+    const total        = recent.length;
+    const failureRate  = total === 0 ? 0 : failedCount / total;
+
+    let status: EnvironmentHealth['status'] = 'healthy';
+    if (failureRate >= 0.5)       status = 'unhealthy';
+    else if (failureRate >= 0.2)  status = 'degraded';
+
+    const lastDeployedAt = allDeployments[0]?.startedAt ?? null;
+    const lastSuccess    = allDeployments.find((d) => d.status === 'success');
+    const lastSuccessAt  = lastSuccess?.startedAt ?? null;
+
+    let currentVersion: string | null = null;
+    if (lastSuccess) {
+      const rel = await this.releaseRepo.findOne({ where: { id: lastSuccess.releaseId } });
+      currentVersion = rel?.version ?? null;
+    }
+
+    return {
+      environmentId:    env.id,
+      environmentName:  env.name,
+      tier:             env.tier,
+      status,
+      currentVersion,
+      totalDeployments: total,
+      successCount,
+      failedCount,
+      failureRate,
+      lastDeployedAt,
+      lastSuccessAt,
+    };
   }
 }
