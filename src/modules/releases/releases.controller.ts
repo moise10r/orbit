@@ -33,6 +33,27 @@ export class ReleasesController {
     return this.svc.create(req.user.workspaceId, dto, req.user.id);
   }
 
+  @Get('environments')
+  @ApiOperation({ summary: 'List environments for the workspace' })
+  listEnvironments(@Request() req: AuthRequest) {
+    return this.svc.listEnvironments(req.user.workspaceId);
+  }
+
+  @Post('environments')
+  @ApiOperation({ summary: 'Create a new environment' })
+  createEnvironment(
+    @Request() req: AuthRequest,
+    @Body() body: { name: string; tier: string; url?: string },
+  ) {
+    return this.svc.createEnvironment(req.user.workspaceId, body.name, body.tier, body.url);
+  }
+
+  @Get('environments/:id/health')
+  @ApiOperation({ summary: 'Get health metrics for an environment' })
+  getEnvironmentHealth(@Request() req: AuthRequest, @Param('id') id: string) {
+    return this.svc.getEnvironmentHealth(req.user.workspaceId, id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a release by ID' })
   findOne(@Request() req: AuthRequest, @Param('id') id: string) {
@@ -77,20 +98,5 @@ export class ReleasesController {
   @ApiOperation({ summary: 'Roll back a deployed release' })
   rollback(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.svc.rollback(req.user.workspaceId, id);
-  }
-
-  @Get('environments')
-  @ApiOperation({ summary: 'List environments for the workspace' })
-  listEnvironments(@Request() req: AuthRequest) {
-    return this.svc.listEnvironments(req.user.workspaceId);
-  }
-
-  @Post('environments')
-  @ApiOperation({ summary: 'Create a new environment' })
-  createEnvironment(
-    @Request() req: AuthRequest,
-    @Body() body: { name: string; tier: string; url?: string },
-  ) {
-    return this.svc.createEnvironment(req.user.workspaceId, body.name, body.tier, body.url);
   }
 }
