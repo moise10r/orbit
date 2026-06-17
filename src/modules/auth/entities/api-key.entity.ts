@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, ManyToOne, JoinColumn,
+  CreateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { Workspace } from './workspace.entity';
 
@@ -12,6 +12,7 @@ export class ApiKey {
   @Column()
   name: string;
 
+  @Index({ unique: true })
   @Column({ comment: 'SHA-256 hash of the raw key — never store plaintext' })
   keyHash: string;
 
@@ -37,4 +38,3 @@ export class ApiKey {
   @CreateDateColumn()
   createdAt: Date;
 }
-// validated: keyHash uniqueness enforced at DB level
