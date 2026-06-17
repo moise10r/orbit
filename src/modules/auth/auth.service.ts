@@ -88,19 +88,26 @@ export class AuthService {
   }
 
   async createApiKey(workspaceId: string, name: string): Promise<{ key: string; record: ApiKey }> {
-    const raw = `orbit_${randomBytes(32).toString('hex')}`;
+    const raw     = `orbit_${randomBytes(32).toString('hex')}`;
     const keyHash = createHash('sha256').update(raw).digest('hex');
 
-    const record = await this.keyRepo.save(
-      this.keyRepo.create({
-        name,
-        keyHash,
-        keyPrefix: raw.slice(0, 12),
-        workspaceId,
-      }),
-    );
-
-    return { key: raw, record };
+    try {
+      const record = await this.keyRepo.save(
+        this.keyRepo.create({
+          name,
+          keyHash,
+          keyPrefix: raw.slice(0, 12),
+          workspaceId,
+        }),
+      );
+      return { key: raw, record };
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      if (e.code === '23505' || e.message?.includes('UQ_api_keys_keyHash')) {
+        throw new ConflictException('Key hash collision — please retry');
+      }
+      throw err;
+    }
   }
 
   async revokeApiKey(id: string, workspaceId: string): Promise<void> {
