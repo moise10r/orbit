@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
   UseGuards, Request, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -7,6 +7,7 @@ import { ReleasesService } from './releases.service';
 import {
   CreateReleaseDto, UpdateReleaseDto,
   CreateDeploymentDto, UpdateDeploymentDto,
+  ListReleasesQueryDto, CreateEnvironmentDto, UpdateEnvironmentDto,
 } from './dto/release.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -22,9 +23,9 @@ export class ReleasesController {
   constructor(private readonly svc: ReleasesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all releases for the workspace' })
-  list(@Request() req: AuthRequest) {
-    return this.svc.list(req.user.workspaceId);
+  @ApiOperation({ summary: 'List releases — paginated, filterable by status and version' })
+  list(@Request() req: AuthRequest, @Query() query: ListReleasesQueryDto) {
+    return this.svc.list(req.user.workspaceId, query);
   }
 
   @Post()
@@ -32,6 +33,39 @@ export class ReleasesController {
   create(@Request() req: AuthRequest, @Body() dto: CreateReleaseDto) {
     return this.svc.create(req.user.workspaceId, dto, req.user.id);
   }
+
+  // ── Environments (must be before :id to avoid route shadowing) ─────────────
+
+  @Get('environments')
+  @ApiOperation({ summary: 'List active environments for the workspace' })
+  listEnvironments(@Request() req: AuthRequest) {
+    return this.svc.listEnvironments(req.user.workspaceId);
+  }
+
+  @Post('environments')
+  @ApiOperation({ summary: 'Create a new environment' })
+  createEnvironment(@Request() req: AuthRequest, @Body() dto: CreateEnvironmentDto) {
+    return this.svc.createEnvironment(req.user.workspaceId, dto);
+  }
+
+  @Patch('environments/:id')
+  @ApiOperation({ summary: 'Update an environment (name, tier, url, active)' })
+  updateEnvironment(
+    @Request() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateEnvironmentDto,
+  ) {
+    return this.svc.updateEnvironment(req.user.workspaceId, id, dto);
+  }
+
+  @Delete('environments/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deactivate an environment (soft-delete)' })
+  removeEnvironment(@Request() req: AuthRequest, @Param('id') id: string) {
+    return this.svc.removeEnvironment(req.user.workspaceId, id);
+  }
+
+  // ── Releases ───────────────────────────────────────────────────────────────
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a release by ID' })
@@ -54,11 +88,7 @@ export class ReleasesController {
 
   @Post(':id/deploy')
   @ApiOperation({ summary: 'Deploy a release to an environment' })
-  deploy(
-    @Request() req: AuthRequest,
-    @Param('id') id: string,
-    @Body() dto: CreateDeploymentDto,
-  ) {
+  deploy(@Request() req: AuthRequest, @Param('id') id: string, @Body() dto: CreateDeploymentDto) {
     return this.svc.deploy(req.user.workspaceId, id, dto);
   }
 
@@ -77,20 +107,5 @@ export class ReleasesController {
   @ApiOperation({ summary: 'Roll back a deployed release' })
   rollback(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.svc.rollback(req.user.workspaceId, id);
-  }
-
-  @Get('environments')
-  @ApiOperation({ summary: 'List environments for the workspace' })
-  listEnvironments(@Request() req: AuthRequest) {
-    return this.svc.listEnvironments(req.user.workspaceId);
-  }
-
-  @Post('environments')
-  @ApiOperation({ summary: 'Create a new environment' })
-  createEnvironment(
-    @Request() req: AuthRequest,
-    @Body() body: { name: string; tier: string; url?: string },
-  ) {
-    return this.svc.createEnvironment(req.user.workspaceId, body.name, body.tier, body.url);
   }
 }
