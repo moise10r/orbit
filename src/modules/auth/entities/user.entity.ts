@@ -51,5 +51,3 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-
-// Migration required to add resetTokenHash (string, nullable) and resetTokenExpiresAt (timestamptz, nullable) to users table
