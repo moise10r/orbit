@@ -1,13 +1,12 @@
-import { IsEmail, MinLength } from 'class-validator';
+import { IsEmail, MinLength, Contains } from 'class-validator';
 
 export class ForgotPasswordDto {
-  // Documentation decorators for Swagger (like ApiProperty) are not available in @nestjs/swagger v11.4.4 per verified inspect_package output
   @IsEmail()
   email: string;
 }
 
 export class ResetPasswordDto {
-  // Documentation decorators for Swagger (like ApiProperty) are not available in @nestjs/swagger v11.4.4 per verified inspect_package output
+  @MinLength(1, { message: 'Token must be a string and not empty' })
   token: string;
 
   @MinLength(8)
