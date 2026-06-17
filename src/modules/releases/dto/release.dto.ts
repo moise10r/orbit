@@ -1,10 +1,64 @@
-import { IsString, IsOptional, IsEnum, Matches } from 'class-validator';
+import { IsString, IsOptional, IsEnum, Matches, IsInt, Min, Max, IsBoolean, IsUrl } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+
+const RELEASE_STATUSES  = ['draft', 'staged', 'deployed', 'rolled_back', 'failed'] as const;
+const ENVIRONMENT_TIERS = ['development', 'staging', 'production'] as const;
+
+export class ListReleasesQueryDto {
+  @ApiPropertyOptional({ enum: RELEASE_STATUSES })
+  @IsOptional()
+  @IsEnum(RELEASE_STATUSES)
+  status?: typeof RELEASE_STATUSES[number];
+
+  @ApiPropertyOptional({ example: '1.4' })
+  @IsOptional()
+  @IsString()
+  version?: string;
+
+  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  page?: number;
+
+  @ApiPropertyOptional({ default: 20, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  limit?: number;
+}
+
+export class CreateEnvironmentDto {
+  @ApiProperty({ example: 'Production' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ enum: ENVIRONMENT_TIERS })
+  @IsEnum(ENVIRONMENT_TIERS)
+  tier: typeof ENVIRONMENT_TIERS[number];
+
+  @ApiPropertyOptional({ example: 'https://example.com' })
+  @IsOptional()
+  @IsString()
+  @IsUrl()
+  url?: string;
+}
+
+export class UpdateEnvironmentDto extends PartialType(CreateEnvironmentDto) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+}
 
 export class CreateReleaseDto {
   @ApiProperty({ example: '1.4.2' })
   @IsString()
-  @Matches(/^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/, { message: 'Version must be a valid semver string' })
+  @Matches(/^d+.d+.d+(-[a-z0-9.]+)?$/, { message: 'Version must be a valid semver string' })
   version: string;
 
   @ApiPropertyOptional({ example: 'Payment gateway integration' })
@@ -12,7 +66,9 @@ export class CreateReleaseDto {
   @IsString()
   title?: string;
 
-  @ApiPropertyOptional({ example: '## What changed\n- Added Stripe integration\n- Fixed tax calculation bug' })
+  @ApiPropertyOptional({ example: '## What changed
+- Added Stripe integration
+- Fixed tax calculation bug' })
   @IsOptional()
   @IsString()
   changelog?: string;
@@ -29,9 +85,9 @@ export class CreateReleaseDto {
 }
 
 export class UpdateReleaseDto extends PartialType(CreateReleaseDto) {
-  @ApiPropertyOptional({ enum: ['draft', 'staged', 'deployed', 'rolled_back', 'failed'] })
+  @ApiPropertyOptional({ enum: RELEASE_STATUSES })
   @IsOptional()
-  @IsEnum(['draft', 'staged', 'deployed', 'rolled_back', 'failed'])
+  @IsEnum(RELEASE_STATUSES)
   status?: string;
 }
 
