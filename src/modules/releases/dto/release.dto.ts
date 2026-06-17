@@ -1,9 +1,7 @@
 import { IsString, IsOptional, IsEnum, Matches, IsInt, Min, Max, IsBoolean, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-
-const RELEASE_STATUSES  = ['draft', 'staged', 'deployed', 'rolled_back', 'failed'] as const;
-const ENVIRONMENT_TIERS = ['development', 'staging', 'production'] as const;
+import { RELEASE_STATUSES, ENVIRONMENT_TIERS } from '@/common/enums/release.enums';
 
 export class ListReleasesQueryDto {
   @ApiPropertyOptional({ enum: RELEASE_STATUSES })
@@ -58,7 +56,7 @@ export class UpdateEnvironmentDto extends PartialType(CreateEnvironmentDto) {
 export class CreateReleaseDto {
   @ApiProperty({ example: '1.4.2' })
   @IsString()
-  @Matches(/^d+.d+.d+(-[a-z0-9.]+)?$/, { message: 'Version must be a valid semver string' })
+  @Matches(/^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/, { message: 'Version must be a valid semver string' })
   version: string;
 
   @ApiPropertyOptional({ example: 'Payment gateway integration' })
@@ -66,9 +64,7 @@ export class CreateReleaseDto {
   @IsString()
   title?: string;
 
-  @ApiPropertyOptional({ example: '## What changed
-- Added Stripe integration
-- Fixed tax calculation bug' })
+  @ApiPropertyOptional({ example: '## What changed\n- Added Stripe integration\n- Fixed tax calculation bug' })
   @IsOptional()
   @IsString()
   changelog?: string;
@@ -88,7 +84,7 @@ export class UpdateReleaseDto extends PartialType(CreateReleaseDto) {
   @ApiPropertyOptional({ enum: RELEASE_STATUSES })
   @IsOptional()
   @IsEnum(RELEASE_STATUSES)
-  status?: string;
+  status?: typeof RELEASE_STATUSES[number];
 }
 
 export class CreateDeploymentDto {
