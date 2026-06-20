@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, ManyToOne, JoinColumn,
+  CreateDateColumn, ManyToOne, JoinColumn, Index
 } from 'typeorm';
 import { Workspace } from './workspace.entity';
 
@@ -12,6 +12,11 @@ export class ApiKey {
   @Column()
   name: string;
 
+  /**
+   * SHA-256 hash of the raw key — never store plaintext
+   * @unique
+   */
+  @Index({ unique: true })
   @Column({ comment: 'SHA-256 hash of the raw key — never store plaintext' })
   keyHash: string;
 
@@ -21,14 +26,26 @@ export class ApiKey {
   @Column()
   workspaceId: string;
 
-  @ManyToOne(() => Workspace, (w) => w.apiKeys, { onDelete: 'CASCADE' })
+  @Column({
+    type: 'enum',
+    enum: ['read-only', 'read-write'],
+    default: 'read-only',
+    comment: 'Scope for the api key',
+  })
+  scope: 'read-only' | 'read-write';
+
+  @Column({ type: 'timestamp', nullable: true, comment: 'Last time this key was used' })
+  lastUsedAt?: Date;
+
+  @ManyToOne(() => Workspace, (w: Workspace) => w.apiKeys, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workspaceId' })
   workspace: Workspace;
 
-  @Column({ nullable: true })
-  lastUsedAt?: Date;
-
-  @Column({ nullable: true })
+  /**
+   * Expiry timestamp for the API key. Nullable; if null, key does not expire.
+   * Ensure DB migration adds this column with: expires_at TIMESTAMP NULL
+   */
+  @Column({ nullable: true, comment: 'Expiry timestamp for the API key. If null, does not expire.' })
   expiresAt?: Date;
 
   @Column({ default: true })
