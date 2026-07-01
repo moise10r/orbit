@@ -178,3 +178,17 @@ export class ReleaseBadgesController {
     return buildBadgeSvg(env.name, message, color);
   }
 }
+
+// ── Public stats controller (no auth) ────────────────────────────────────────
+
+@ApiTags('releases')
+@Controller('releases')
+export class ReleasesStatsController {
+  constructor(private readonly svc: ReleasesService) {}
+
+  @Get('stats')
+  @ApiOperation({ summary: 'Deployment statistics across all environments (no auth required)' })
+  getStats() {
+    return this.svc.getDeploymentStats();
+  }
+}

@@ -159,6 +159,64 @@ export class ReleasesService {
     );
   }
 
+  async getDeploymentStats(): Promise<{
+    totalDeployments: number;
+    successRatePercent: number;
+    avgDurationSeconds: number | null;
+    perEnvironment: Array<{
+      environment: string;
+      total: number;
+      success: number;
+      successRatePercent: number;
+      avgDurationSeconds: number | null;
+    }>;
+  }> {
+    const overall = await this.deployRepo
+      .createQueryBuilder('d')
+      .select('COUNT(d.id)', 'total')
+      .addSelect("SUM(CASE WHEN d.status = 'success' THEN 1 ELSE 0 END)", 'successCount')
+      .addSelect(
+        "AVG(CASE WHEN d.completedAt IS NOT NULL THEN EXTRACT(EPOCH FROM (d.completedAt - d.startedAt)) END)",
+        'avgDuration',
+      )
+      .getRawOne<{ total: string; successCount: string; avgDuration: string | null }>();
+
+    const total = Number(overall?.total ?? 0);
+    const successCount = Number(overall?.successCount ?? 0);
+    const avgDuration = overall?.avgDuration != null ? Number(overall.avgDuration) : null;
+
+    const perEnvRows = await this.deployRepo
+      .createQueryBuilder('d')
+      .select('d.environmentName', 'environment')
+      .addSelect('COUNT(d.id)', 'total')
+      .addSelect("SUM(CASE WHEN d.status = 'success' THEN 1 ELSE 0 END)", 'successCount')
+      .addSelect(
+        "AVG(CASE WHEN d.completedAt IS NOT NULL THEN EXTRACT(EPOCH FROM (d.completedAt - d.startedAt)) END)",
+        'avgDuration',
+      )
+      .groupBy('d.environmentName')
+      .getRawMany<{ environment: string; total: string; successCount: string; avgDuration: string | null }>();
+
+    const perEnvironment = perEnvRows.map((row) => {
+      const rowTotal = Number(row.total);
+      const rowSuccess = Number(row.successCount);
+      return {
+        environment: row.environment,
+        total: rowTotal,
+        success: rowSuccess,
+        successRatePercent: rowTotal ? Number(((rowSuccess / rowTotal) * 100).toFixed(2)) : 0,
+        avgDurationSeconds: row.avgDuration != null ? Number(Number(row.avgDuration).toFixed(2)) : null,
+      };
+    });
+
+    return {
+      totalDeployments: total,
+      successRatePercent: total ? Number(((successCount / total) * 100).toFixed(2)) : 0,
+      avgDurationSeconds: avgDuration != null ? Number(avgDuration.toFixed(2)) : null,
+      perEnvironment,
+    };
+  }
+
   async getEnvironmentBadgeData(
     envId: string,
   ): Promise<{ env: Environment | null; latestDeployment: Deployment | null }> {
