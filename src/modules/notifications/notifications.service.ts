@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import { ConfigService } from '@nestjs/config';
 import { NotificationChannel } from './entities/notification-channel.entity';
 import { NotificationLog } from './entities/notification-log.entity';
+import { WebhookRetryQueueService } from './webhook-retry-queue.service';
 
 export interface AlertPayload {
   event: string;
@@ -33,6 +34,7 @@ export class NotificationsService {
     @InjectRepository(NotificationLog)
     private readonly logRepo: Repository<NotificationLog>,
     private readonly config: ConfigService,
+    private readonly retryQueue: WebhookRetryQueueService,
   ) {
     this.resend = new Resend(config.get<string>('RESEND_API_KEY'));
   }
@@ -93,6 +95,12 @@ export class NotificationsService {
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.warn(`[Notifications] Failed to send via ${channel.type}: ${errorMessage}`);
+
+      // Schedule retry only for Slack webhooks (HTTP calls are retriable; emails use Resend which has its own retry)
+      if (channel.type === 'slack') {
+        const cfg = channel.config as { webhookUrl: string };
+        await this.retryQueue.enqueue(cfg.webhookUrl, payload, channel.id, idempotencyKey);
+      }
     }
 
     await this.logRepo.save(

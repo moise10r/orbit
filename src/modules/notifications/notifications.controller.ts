@@ -1,10 +1,11 @@
 import {
   Controller, Get, Post, Delete, Body, Param,
-  UseGuards, Request, HttpCode, HttpStatus,
+  UseGuards, Request, HttpCode, HttpStatus, Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags, ApiProperty } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiProperty, ApiQuery } from '@nestjs/swagger';
 import { IsString, IsEnum, IsArray, IsObject } from 'class-validator';
 import { NotificationsService } from './notifications.service';
+import { WebhookRetryQueueService } from './webhook-retry-queue.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 class CreateChannelDto {
@@ -30,7 +31,10 @@ class CreateChannelDto {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotificationsController {
-  constructor(private readonly svc: NotificationsService) {}
+  constructor(
+    private readonly svc: NotificationsService,
+    private readonly retryQueue: WebhookRetryQueueService,
+  ) {}
 
   @Get('channels')
   @ApiOperation({ summary: 'List notification channels for the workspace' })
@@ -61,5 +65,18 @@ export class NotificationsController {
     @Param('id') id: string,
   ) {
     return this.svc.deleteChannel(req.user.workspaceId, id);
+  }
+
+  @Get('webhooks/retry/stats')
+  @ApiOperation({ summary: 'Retry queue and DLQ sizes' })
+  retryStats() {
+    return this.retryQueue.queueStats();
+  }
+
+  @Get('webhooks/retry/dlq')
+  @ApiOperation({ summary: 'List permanently failed webhook deliveries (dead-letter queue)' })
+  @ApiQuery({ name: 'limit', required: false, example: 50 })
+  dlq(@Query('limit') limit?: string) {
+    return this.retryQueue.listDLQ(limit ? parseInt(limit, 10) : 50);
   }
 }
