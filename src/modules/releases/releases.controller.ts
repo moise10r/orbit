@@ -93,4 +93,10 @@ export class ReleasesController {
   ) {
     return this.svc.createEnvironment(req.user.workspaceId, body.name, body.tier, body.url);
   }
+
+  @Get('environments/:id/health')
+  @ApiOperation({ summary: 'Get health metrics for an environment' })
+  getEnvironmentHealth(@Request() req: AuthRequest, @Param('id') id: string) {
+    return this.svc.getEnvironmentHealth(req.user.workspaceId, id);
+  }
 }
