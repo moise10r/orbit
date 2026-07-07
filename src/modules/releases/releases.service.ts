@@ -158,4 +158,19 @@ export class ReleasesService {
       this.envRepo.create({ workspaceId, name, slug, tier: tier as Environment['tier'], url }),
     );
   }
+
+  async getEnvironmentBadgeData(
+    envId: string,
+  ): Promise<{ env: Environment | null; latestDeployment: Deployment | null }> {
+    const env = await this.envRepo.findOne({ where: { id: envId } });
+    if (!env) return { env: null, latestDeployment: null };
+
+    const latestDeployment = await this.deployRepo.findOne({
+      where: { environmentId: envId },
+      relations: ['release'],
+      order: { startedAt: 'DESC' },
+    });
+
+    return { env, latestDeployment: latestDeployment ?? null };
+  }
 }
