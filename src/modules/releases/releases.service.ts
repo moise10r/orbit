@@ -70,6 +70,7 @@ export class ReleasesService {
     ]);
 
     if (!env) throw new NotFoundException(`Environment ${dto.environmentId} not found`);
+
     if (env.tier === 'production' && release.status !== 'staged') {
       throw new BadRequestException('Release must be staged before deploying to production');
     }
