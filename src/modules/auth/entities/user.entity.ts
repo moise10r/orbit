@@ -20,6 +20,12 @@ export class User {
   @Column({ select: false })
   passwordHash: string;
 
+  @Column({ nullable: true })
+  resetTokenHash?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  resetTokenExpiresAt?: Date;
+
   @Column({ type: 'enum', enum: ['owner', 'admin', 'member', 'viewer'], default: 'member' })
   role: UserRole;
 
