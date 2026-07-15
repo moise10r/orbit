@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -24,8 +26,21 @@ import { ApiKey } from './entities/api-key.entity';
       }),
       inject: [ConfigService],
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60,
+      limit: 10,
+    }]),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, ApiKeyGuard],
+  providers: [
+    AuthService, 
+    JwtStrategy, 
+    JwtAuthGuard, 
+    ApiKeyGuard,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    }
+  ],
   controllers: [AuthController],
   exports: [AuthService, JwtAuthGuard, ApiKeyGuard, TypeOrmModule],
 })
