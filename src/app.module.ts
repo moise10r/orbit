@@ -2,8 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
-import { ReleasesModule } from './modules/releases/releases.module';
+import { GitHubModule } from './modules/github/github.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReleasesModule } from './modules/releases/releases.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       inject: [ConfigService],
     }),
     AuthModule,
+    GitHubModule,
     ReleasesModule,
     NotificationsModule,
   ],
