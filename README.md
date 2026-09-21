@@ -1,4 +1,4 @@
-# Orbit API Realese
+# Orbit API
 
 Engineering release management platform. Track deployments across environments, automate changelogs, and alert your team the moment something goes wrong.
 
